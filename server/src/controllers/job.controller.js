@@ -1,24 +1,33 @@
-import { Job, Candidate } from '../models/index.js';
+import { Job, Candidate, CANDIDATE_SOURCES } from '../models/index.js';
 import {
   logActivity,
   asyncHandler,
   parsePagination,
+  escapeRegex,
+  asPlainString,
 } from '../utils/helpers.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 const buildJobFilter = (query, user) => {
   const filter = {};
 
-  if (query.status) filter.status = query.status;
-  if (query.location) filter.location = { $regex: query.location, $options: 'i' };
-  if (query.employmentType) filter.employmentType = query.employmentType;
-  if (query.company) filter.company = { $regex: query.company, $options: 'i' };
+  const status = asPlainString(query.status);
+  const location = asPlainString(query.location);
+  const employmentType = asPlainString(query.employmentType);
+  const company = asPlainString(query.company);
+  const search = asPlainString(query.search);
 
-  if (query.search) {
+  if (status) filter.status = status;
+  if (location) filter.location = { $regex: escapeRegex(location), $options: 'i' };
+  if (employmentType) filter.employmentType = employmentType;
+  if (company) filter.company = { $regex: escapeRegex(company), $options: 'i' };
+
+  if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { title: { $regex: query.search, $options: 'i' } },
-      { description: { $regex: query.search, $options: 'i' } },
-      { company: { $regex: query.search, $options: 'i' } },
+      { title: { $regex: safe, $options: 'i' } },
+      { description: { $regex: safe, $options: 'i' } },
+      { company: { $regex: safe, $options: 'i' } },
     ];
   }
 
@@ -50,10 +59,12 @@ export const listJobs = asyncHandler(async (req, res) => {
   }
 
   const sort = sortMap[req.query.sort] || sortMap.newest;
+  const isStaff = req.user?.role === 'admin' || req.user?.role === 'recruiter';
+  const createdBySelect = isStaff ? 'name email company' : 'name company';
 
   const [jobs, total] = await Promise.all([
     Job.find(filter)
-      .populate('createdBy', 'name email company')
+      .populate('createdBy', createdBySelect)
       .sort(sort)
       .skip(skip)
       .limit(limit),
@@ -70,9 +81,12 @@ export const listJobs = asyncHandler(async (req, res) => {
  * GET /api/jobs/:id
  */
 export const getJob = asyncHandler(async (req, res) => {
+  const isStaff = req.user?.role === 'admin' || req.user?.role === 'recruiter';
+  const createdBySelect = isStaff ? 'name email company' : 'name company';
+
   const job = await Job.findById(req.params.id).populate(
     'createdBy',
-    'name email company'
+    createdBySelect
   );
   if (!job) return sendError(res, 'Job not found', 404);
 
@@ -317,6 +331,7 @@ export const jobDashboardStats = asyncHandler(async (req, res) => {
       jobsPublished,
       applicationsToday,
     },
+    sources: CANDIDATE_SOURCES,
     charts: {
       jobsByStatus: jobsByStatus.map((r) => ({ status: r._id, count: r.count })),
       candidatesBySource: candidatesBySource.map((r) => ({

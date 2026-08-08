@@ -8,6 +8,8 @@ import {
   logActivity,
   asyncHandler,
   parsePagination,
+  escapeRegex,
+  asPlainString,
 } from '../utils/helpers.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
@@ -18,26 +20,39 @@ const ownedJobIds = async (user) => {
 };
 
 /**
+ * GET /api/candidates/sources — canonical source list from Candidate model
+ */
+export const listSources = asyncHandler(async (_req, res) => {
+  return sendSuccess(res, { sources: CANDIDATE_SOURCES });
+});
+
+/**
  * GET /api/candidates
  */
 export const listCandidates = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, { page: 1, limit: 20 });
   const filter = {};
 
-  if (req.query.status) filter.status = req.query.status;
-  if (req.query.source) filter.source = req.query.source;
-  if (req.query.jobId) filter.jobId = req.query.jobId;
+  const status = asPlainString(req.query.status);
+  const source = asPlainString(req.query.source);
+  const jobId = asPlainString(req.query.jobId);
+  const search = asPlainString(req.query.search);
 
-  if (req.query.search) {
+  if (status) filter.status = status;
+  if (source) filter.source = source;
+  if (jobId) filter.jobId = jobId;
+
+  if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { name: { $regex: req.query.search, $options: 'i' } },
-      { email: { $regex: req.query.search, $options: 'i' } },
+      { name: { $regex: safe, $options: 'i' } },
+      { email: { $regex: safe, $options: 'i' } },
     ];
   }
 
   const ids = await ownedJobIds(req.user);
   if (ids) filter.jobId = filter.jobId ? filter.jobId : { $in: ids };
-  if (ids && req.query.jobId && !ids.some((id) => id.toString() === req.query.jobId)) {
+  if (ids && jobId && !ids.some((id) => id.toString() === jobId)) {
     return sendError(res, 'Insufficient permissions', 403);
   }
 
@@ -52,6 +67,7 @@ export const listCandidates = asyncHandler(async (req, res) => {
 
   return sendSuccess(res, {
     candidates,
+    sources: CANDIDATE_SOURCES,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 },
   });
 });
@@ -61,14 +77,17 @@ export const listCandidates = asyncHandler(async (req, res) => {
  */
 export const getPipeline = asyncHandler(async (req, res) => {
   const filter = {};
-  if (req.query.jobId) filter.jobId = req.query.jobId;
+  const jobId = asPlainString(req.query.jobId);
+  const source = asPlainString(req.query.source);
+  if (jobId) filter.jobId = jobId;
+  if (source) filter.source = source;
 
   const ids = await ownedJobIds(req.user);
   if (ids) {
-    if (req.query.jobId && !ids.some((id) => id.toString() === req.query.jobId)) {
+    if (jobId && !ids.some((id) => id.toString() === jobId)) {
       return sendError(res, 'Insufficient permissions', 403);
     }
-    filter.jobId = req.query.jobId || { $in: ids };
+    filter.jobId = jobId || { $in: ids };
   }
 
   const candidates = await Candidate.find(filter)
@@ -114,8 +133,20 @@ export const createCandidate = asyncHandler(async (req, res) => {
   const job = await Job.findById(req.body.jobId);
   if (!job) return sendError(res, 'Job not found', 404);
 
-  if (job.status !== 'published' && (!req.user || req.user.role === 'candidate')) {
+  const isRecruiter = req.user?.role === 'recruiter';
+  const isAdmin = req.user?.role === 'admin';
+  const isPublicOrCandidate = !req.user || req.user.role === 'candidate';
+
+  if (isRecruiter && job.createdBy.toString() !== req.user._id.toString()) {
+    return sendError(res, 'Insufficient permissions', 403);
+  }
+
+  if (isPublicOrCandidate && job.status !== 'published') {
     return sendError(res, 'Job is not open for applications', 400);
+  }
+
+  if (isRecruiter && job.status !== 'published' && job.status !== 'draft') {
+    return sendError(res, 'Cannot add candidates to a closed or archived job', 400);
   }
 
   const existing = await Candidate.findOne({
@@ -126,13 +157,19 @@ export const createCandidate = asyncHandler(async (req, res) => {
     return sendError(res, 'You have already applied to this job', 409);
   }
 
+  // Public/candidate applies are always Direct — do not trust client-supplied board sources
+  let source = 'Direct';
+  if (isAdmin || isRecruiter) {
+    source = req.body.source || 'Direct';
+  }
+
   const candidate = await Candidate.create({
     name: req.body.name,
     email: req.body.email,
     phone: req.body.phone || '',
     resumeUrl: req.body.resumeUrl || '',
-    coverLetter: req.body.coverLetter || '',
-    source: req.body.source || 'Direct',
+    coverLetter: (req.body.coverLetter || '').slice(0, 10000),
+    source,
     jobId: req.body.jobId,
     status: 'New',
     appliedAt: new Date(),
@@ -140,7 +177,7 @@ export const createCandidate = asyncHandler(async (req, res) => {
       {
         action: 'Application received',
         toStatus: 'New',
-        note: `Applied via ${req.body.source || 'Direct'}`,
+        note: `Applied via ${source}`,
         createdBy: req.user?._id || null,
       },
     ],
@@ -153,9 +190,8 @@ export const createCandidate = asyncHandler(async (req, res) => {
     entityId: candidate._id,
     details: {
       name: candidate.name,
-      email: candidate.email,
       source: candidate.source,
-      jobId: job._id,
+      jobId: job._id.toString(),
       jobTitle: job.title,
     },
     board: candidate.source !== 'Direct' ? candidate.source : null,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Briefcase } from 'lucide-react';
 import { jobsApi } from '../../services/api';
 import { formatDate, formatSalary, getErrorMessage } from '../../utils/helpers';
@@ -13,6 +13,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 
 export default function JobsPage() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -57,7 +58,7 @@ export default function JobsPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 rounded-2xl border border-ink-200 bg-white p-4 lg:grid-cols-5">
+      <div className="filter-bar lg:grid-cols-5">
         <Input
           placeholder="Search jobs"
           value={filters.search}
@@ -99,7 +100,7 @@ export default function JobsPage() {
         </Select>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <div className="panel overflow-hidden">
         {loading ? (
           <TableSkeleton />
         ) : jobs.length === 0 ? (
@@ -108,40 +109,43 @@ export default function JobsPage() {
             title="No jobs yet"
             description="Create a draft or publish a role to start distributing."
             actionLabel="Create job"
-            onAction={() => (window.location.href = '/app/jobs/new')}
+            onAction={() => navigate('/app/jobs/new')}
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-ink-100 bg-ink-50/80 text-xs uppercase tracking-wide text-ink-500">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Role</th>
-                  <th className="px-4 py-3 font-semibold">Location</th>
-                  <th className="px-4 py-3 font-semibold">Type</th>
-                  <th className="px-4 py-3 font-semibold">Salary</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Created</th>
-                  <th className="px-4 py-3 font-semibold" />
+                  <th>Role</th>
+                  <th>Location</th>
+                  <th>Type</th>
+                  <th>Salary</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job._id} className="border-b border-ink-50 hover:bg-ink-50/50">
-                    <td className="px-4 py-3">
+                  <tr key={job._id}>
+                    <td>
                       <p className="font-semibold text-ink-900">{job.title}</p>
                       <p className="text-xs text-ink-500">{job.company}</p>
                     </td>
-                    <td className="px-4 py-3 text-ink-600">{job.location}</td>
-                    <td className="px-4 py-3">{job.employmentType}</td>
-                    <td className="px-4 py-3 text-ink-600">
+                    <td className="text-ink-600">{job.location}</td>
+                    <td>{job.employmentType}</td>
+                    <td className="text-ink-600">
                       {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <Badge status={job.status}>{job.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-ink-500">{formatDate(job.createdAt)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Link to={`/app/jobs/${job._id}`} className="font-semibold text-brand-700">
+                    <td className="text-ink-500">{formatDate(job.createdAt)}</td>
+                    <td className="text-right">
+                      <Link
+                        to={`/app/jobs/${job._id}`}
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
                         Open
                       </Link>
                     </td>

@@ -75,24 +75,30 @@ export default function AdminDashboardPage() {
           }
         />
         <CardBody className="divide-y divide-ink-100 p-0">
-          {(recentActivity || []).map((item) => (
-            <div
-              key={item._id}
-              className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="text-sm font-semibold text-ink-900">{item.action}</p>
-                <p className="text-xs text-ink-500">
-                  {item.userId?.name || 'System'}
-                  {item.board ? ` · ${item.board}` : ''}
-                </p>
+          {(recentActivity || []).length === 0 ? (
+            <p className="px-5 py-10 text-sm text-ink-500">
+              No recent activity yet. Publishing jobs or simulating applications will appear here.
+            </p>
+          ) : (
+            (recentActivity || []).map((item) => (
+              <div
+                key={item._id}
+                className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">{item.action}</p>
+                  <p className="text-xs text-ink-500">
+                    {item.userId?.name || 'System'}
+                    {item.board ? ` · ${item.board}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge status={item.status}>{item.status}</Badge>
+                  <span className="text-xs text-ink-400">{formatDateTime(item.createdAt)}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge status={item.status}>{item.status}</Badge>
-                <span className="text-xs text-ink-400">{formatDateTime(item.createdAt)}</span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardBody>
       </Card>
 

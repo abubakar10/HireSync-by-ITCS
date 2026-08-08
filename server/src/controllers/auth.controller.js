@@ -22,11 +22,22 @@ export const authRateLimiter = rateLimit({
   },
 });
 
+export const publicWriteRateLimiter = rateLimit({
+  windowMs: config.publicRateLimit.windowMs,
+  max: config.publicRateLimit.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests. Please try again later.',
+    errors: [],
+  },
+});
+
 /**
  * POST /api/auth/register
- * Public registration. Default role = candidate.
- * Admin/recruiter creation should go through /api/users (admin only),
- * but demo allows recruiter self-register for convenience.
+ * Public registration defaults to candidate.
+ * Recruiter self-signup is only allowed when demo/public recruiter signup is enabled.
  */
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password, role = 'candidate', company = '' } = req.body;
@@ -36,8 +47,20 @@ export const register = asyncHandler(async (req, res) => {
     return sendError(res, 'Email already registered', 409);
   }
 
-  // Prevent public self-elevation to admin
-  const safeRole = role === 'admin' ? 'candidate' : role;
+  let safeRole = 'candidate';
+  if (role === 'recruiter') {
+    if (!config.allowPublicRecruiterSignup) {
+      return sendError(
+        res,
+        'Recruiter accounts can only be created by an administrator',
+        403
+      );
+    }
+    safeRole = 'recruiter';
+  } else if (role === 'candidate') {
+    safeRole = 'candidate';
+  }
+  // Never allow public self-elevation to admin
 
   const hashed = await hashPassword(password);
   const user = await User.create({
@@ -74,16 +97,14 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email }).select('+password');
-  if (!user) {
+
+  // Always compare to reduce user-enumeration timing differences
+  const match = await comparePassword(password, user?.password);
+  if (!user || !match) {
     return sendError(res, 'Invalid email or password', 401);
   }
 
   if (!user.isActive) {
-    return sendError(res, 'Account is inactive', 403);
-  }
-
-  const match = await comparePassword(password, user.password);
-  if (!match) {
     return sendError(res, 'Invalid email or password', 401);
   }
 

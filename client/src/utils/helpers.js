@@ -67,6 +67,7 @@ export const statusColor = (status) => {
     not_connected: 'bg-ink-100 text-ink-600',
     available: 'bg-sky-100 text-sky-700',
     error: 'bg-rose-100 text-rose-700',
+    not_published: 'bg-ink-100 text-ink-600',
   };
   return map[status] || 'bg-ink-100 text-ink-600';
 };

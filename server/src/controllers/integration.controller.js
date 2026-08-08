@@ -143,8 +143,9 @@ export const inboundApplication = asyncHandler(async (req, res) => {
  * GET /api/integrations/simulate-options
  * Published distributions + demo applicant presets for the admin simulator UI.
  */
-export const getSimulateOptions = asyncHandler(async (_req, res) => {
-  const data = await listSimulateOptions();
+export const getSimulateOptions = asyncHandler(async (req, res) => {
+  const ownerUserId = req.user.role === 'recruiter' ? req.user._id : null;
+  const data = await listSimulateOptions({ ownerUserId });
   return sendSuccess(res, data, 'Simulate options loaded');
 });
 
@@ -161,10 +162,10 @@ export const simulateApplication = asyncHandler(async (req, res) => {
     phone,
     resumeUrl,
     coverLetter,
-    useRandomApplicant = false,
   } = req.body;
 
-  const options = await listSimulateOptions();
+  const ownerUserId = req.user.role === 'recruiter' ? req.user._id : null;
+  const options = await listSimulateOptions({ ownerUserId });
 
   if (!options.options.length) {
     return sendError(
@@ -187,7 +188,7 @@ export const simulateApplication = asyncHandler(async (req, res) => {
     target = options.options[0];
   }
 
-  const demo = useRandomApplicant || !name ? pickDemoApplicant() : null;
+  const demo = pickDemoApplicant();
 
   try {
     const result = await processInboundApplication({
@@ -205,6 +206,7 @@ export const simulateApplication = asyncHandler(async (req, res) => {
       },
       actorUserId: req.user?._id || null,
       simulated: true,
+      requireOwnerId: ownerUserId,
     });
 
     return sendSuccess(

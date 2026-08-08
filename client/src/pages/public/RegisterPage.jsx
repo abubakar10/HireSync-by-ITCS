@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Briefcase } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getErrorMessage } from '../../utils/helpers';
@@ -36,10 +37,15 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-md flex-col justify-center px-4 py-12">
-      <div className="mb-6 text-center">
-        <h1 className="font-display text-3xl font-bold text-ink-900">Create account</h1>
+      <div className="mb-8 text-center">
+        <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-900/20">
+          <Briefcase className="h-5 w-5" />
+        </span>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">
+          Create your account
+        </h1>
         <p className="mt-2 text-sm text-ink-500">
-          Register as a recruiter to explore distribution and pipelines.
+          Register as a recruiter to explore distribution and candidate pipelines.
         </p>
       </div>
       <Card>
@@ -76,16 +82,16 @@ export default function RegisterPage() {
               label="Password"
               type="password"
               required
-              minLength={6}
+              minLength={8}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              hint="At least 6 characters"
+              hint="At least 8 characters"
             />
             <Button type="submit" className="w-full" loading={loading}>
               Create account
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-ink-500">
+          <p className="mt-5 text-center text-sm text-ink-500">
             Already have an account?{' '}
             <Link to="/login" className="font-semibold text-brand-700 hover:underline">
               Log in

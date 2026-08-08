@@ -74,14 +74,14 @@ export const getJobDistribution = asyncHandler(async (req, res) => {
       publishedStatus: dist?.status || 'not_published',
       externalJobId: dist?.externalJobId || null,
       publishedAt: dist?.publishedAt || null,
-      lastSyncedAt: dist?.lastSyncedAt || null,
+      lastSyncedAt: dist?.lastSyncedAt || integration?.lastSyncAt || null,
       errorMessage: dist?.errorMessage || null,
       durationMs: dist?.durationMs || null,
       distributionId: dist?._id || null,
       isDemo: true,
       mode: 'mock',
       primary: PRIMARY_DEMO_BOARDS.has(name),
-      disclaimer: 'Mock adapter — DEMO only',
+      disclaimer: 'Mock adapter — DEMO only. No live job board API is called.',
     };
   });
 
@@ -221,7 +221,7 @@ export const publishToBoards = asyncHandler(async (req, res) => {
       entity: 'JobDistribution',
       entityId: dist._id,
       details: {
-        jobId: job._id,
+        jobId: job._id.toString(),
         jobTitle: job.title,
         board,
         externalJobId: dist.externalJobId,
@@ -274,6 +274,7 @@ export const listDistributions = asyncHandler(async (req, res) => {
   const [distributions, total] = await Promise.all([
     JobDistribution.find(filter)
       .populate('jobId', 'title company status')
+      .select('-responsePayload')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import Button from './Button';
+import { cn } from '../../utils/helpers';
 
 export default function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   useEffect(() => {
@@ -28,27 +29,33 @@ export default function Modal({ open, onClose, title, children, footer, size = '
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-ink-900/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-ink-900/45 backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative z-10 w-full ${widths[size]} rounded-2xl border border-ink-200 bg-white shadow-xl`}
+        aria-label={typeof title === 'string' ? title : 'Dialog'}
+        className={cn(
+          'relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl shadow-ink-900/20',
+          widths[size]
+        )}
       >
-        <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
-          <h2 className="font-display text-lg font-semibold text-ink-900">{title}</h2>
+        <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-ink-900">
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-50 hover:text-ink-700"
+            className="rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-50 hover:text-ink-700"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-4">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-ink-100 bg-ink-50/50 px-5 py-4">
             {footer}
           </div>
         )}
@@ -75,7 +82,7 @@ export function ConfirmDialog({
       size="sm"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
           <Button
@@ -88,7 +95,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p className="text-sm text-ink-600">{message}</p>
+      <p className="text-sm leading-relaxed text-ink-600">{message}</p>
     </Modal>
   );
 }

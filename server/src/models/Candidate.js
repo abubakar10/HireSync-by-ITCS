@@ -126,8 +126,8 @@ const candidateSchema = new mongoose.Schema(
     },
     externalApplicationId: {
       type: String,
-      default: null,
       trim: true,
+      // Omit when absent — do not default to null (breaks unique sparse indexes)
     },
     notes: {
       type: [noteSchema],
@@ -150,7 +150,15 @@ const candidateSchema = new mongoose.Schema(
 );
 
 candidateSchema.index({ jobId: 1, email: 1 }, { unique: true });
-candidateSchema.index({ externalApplicationId: 1 }, { sparse: true, unique: true });
+candidateSchema.index(
+  { externalApplicationId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      externalApplicationId: { $type: 'string' },
+    },
+  }
+);
 candidateSchema.index({ status: 1 });
 candidateSchema.index({ source: 1 });
 candidateSchema.index({ appliedAt: -1 });

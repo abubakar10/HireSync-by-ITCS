@@ -6,40 +6,59 @@ import {
   Copy,
   Globe2,
   Loader2,
+  RefreshCw,
+  RotateCcw,
   XCircle,
-  AlertTriangle,
+  Clock3,
+  AlertCircle,
 } from 'lucide-react';
 import { distributionApi } from '../../services/api';
-import { formatDateTime, getErrorMessage } from '../../utils/helpers';
+import { formatDateTime, getErrorMessage, cn } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { PageHeader } from '../../components/PageHeader';
-import Badge from '../../components/ui/Badge';
+import Badge, { DemoBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import Alert from '../../components/ui/Alert';
+import EmptyState from '../../components/ui/EmptyState';
 import { PageSkeleton } from '../../components/ui/Skeleton';
 
-const PRIMARY_BOARDS = [
-  'Indeed',
-  'LinkedIn',
-  'Monster',
-  'JobStreet',
-  'Kalibrr',
-  'OnlineJobs.ph',
-  'JobsDB',
-  'PhilJobNet',
-];
+function labelStatus(value) {
+  if (!value) return '—';
+  return String(value).replaceAll('_', ' ');
+}
+
+function publishTone(liveState, publishedStatus) {
+  if (liveState === 'publishing' || liveState === 'queued') return 'pending';
+  if (liveState === 'success') return 'success';
+  if (liveState === 'failed') return 'failed';
+  if (publishedStatus === 'published' || publishedStatus === 'updated') return 'published';
+  if (publishedStatus === 'failed') return 'failed';
+  if (publishedStatus === 'closed') return 'closed';
+  if (publishedStatus === 'pending') return 'pending';
+  return 'draft';
+}
+
+function publishLabel(liveState, publishedStatus) {
+  if (liveState === 'queued') return 'Queued';
+  if (liveState === 'publishing') return 'Publishing…';
+  if (liveState === 'success') return 'Published (this session)';
+  if (liveState === 'failed') return 'Failed (this session)';
+  if (publishedStatus === 'not_published') return 'Not published';
+  return labelStatus(publishedStatus);
+}
 
 function ProgressBar({ current, total }) {
   const pct = total ? Math.round((current / total) * 100) : 0;
   return (
-    <div className="mt-3">
-      <div className="mb-1 flex justify-between text-xs text-ink-500">
+    <div>
+      <div className="mb-1.5 flex justify-between text-xs font-medium text-ink-500">
         <span>
-          Publishing {current} of {total} boards (DEMO)
+          Publishing {current} of {total} boards · DEMO mock adapters
         </span>
         <span>{pct}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-ink-100">
+      <div className="h-2.5 overflow-hidden rounded-full bg-ink-100">
         <div
           className="h-full rounded-full bg-brand-600 transition-all duration-300"
           style={{ width: `${pct}%` }}
@@ -50,7 +69,7 @@ function ProgressBar({ current, total }) {
 }
 
 function BoardStatusIcon({ state }) {
-  if (state === 'publishing') {
+  if (state === 'publishing' || state === 'queued') {
     return <Loader2 className="h-4 w-4 animate-spin text-brand-600" />;
   }
   if (state === 'success') {
@@ -60,6 +79,159 @@ function BoardStatusIcon({ state }) {
     return <XCircle className="h-4 w-4 text-rose-600" />;
   }
   return null;
+}
+
+function MetaRow({ label, children }) {
+  return (
+    <div className="grid grid-cols-[7.5rem_1fr] gap-2 text-xs sm:grid-cols-[8.5rem_1fr]">
+      <dt className="font-medium text-ink-400">{label}</dt>
+      <dd className="min-w-0 text-ink-700">{children}</dd>
+    </div>
+  );
+}
+
+function BoardCard({
+  board,
+  checked,
+  live,
+  publishing,
+  onToggle,
+  onCopy,
+  onRetryOne,
+}) {
+  const extId = live?.externalJobId || board.externalJobId;
+  const errorMsg =
+    live?.state === 'failed'
+      ? live.message
+      : !live || live.state === 'queued'
+        ? board.errorMessage
+        : live?.state === 'success'
+          ? null
+          : board.errorMessage;
+  const lastSync = board.lastSyncedAt;
+  const isFailed =
+    live?.state === 'failed' || (!live && board.publishedStatus === 'failed');
+
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(28,34,44,0.04)] transition',
+        checked
+          ? 'border-brand-400 ring-2 ring-brand-500/15'
+          : 'border-ink-200/80 hover:border-ink-300',
+        publishing && 'opacity-95'
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <label className="mt-1 flex cursor-pointer items-start">
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={publishing}
+            onChange={() => onToggle(board.name)}
+            className="mt-0.5 h-4 w-4 accent-brand-600"
+            aria-label={`Select ${board.name}`}
+          />
+        </label>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                <Globe2 className="h-5 w-5" strokeWidth={1.75} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-display text-base font-semibold text-ink-900">
+                    {board.name}
+                  </h3>
+                  <DemoBadge />
+                </div>
+                <p className="mt-0.5 text-xs text-ink-500">
+                  Mock adapter · not a live API
+                </p>
+              </div>
+            </div>
+            <BoardStatusIcon state={live?.state} />
+          </div>
+
+          <dl className="mt-4 space-y-2 border-t border-ink-50 pt-3">
+            <MetaRow label="Region">{board.region || '—'}</MetaRow>
+            <MetaRow label="Integration type">{board.type || '—'}</MetaRow>
+            <MetaRow label="Connection">
+              <Badge status={board.connectionStatus}>
+                {labelStatus(board.connectionStatus)}
+              </Badge>
+              {!board.enabled && (
+                <span className="ml-1.5 text-ink-400">(disabled)</span>
+              )}
+            </MetaRow>
+            <MetaRow label="Publishing">
+              <Badge status={publishTone(live?.state, board.publishedStatus)}>
+                {publishLabel(live?.state, board.publishedStatus)}
+              </Badge>
+            </MetaRow>
+            <MetaRow label="External job ID">
+              {extId ? (
+                <span className="inline-flex max-w-full items-center gap-1.5">
+                  <code className="truncate rounded bg-ink-50 px-1.5 py-0.5 font-mono text-[11px] text-ink-800">
+                    {extId}
+                  </code>
+                  <button
+                    type="button"
+                    className="rounded p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700"
+                    onClick={() => onCopy(extId)}
+                    aria-label="Copy external job ID"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ) : (
+                <span className="text-ink-400">Not assigned yet</span>
+              )}
+            </MetaRow>
+            <MetaRow label="Last sync">
+              {lastSync ? (
+                <span className="inline-flex items-center gap-1">
+                  <Clock3 className="h-3.5 w-3.5 text-ink-400" />
+                  {formatDateTime(lastSync)}
+                </span>
+              ) : (
+                <span className="text-ink-400">Never</span>
+              )}
+            </MetaRow>
+          </dl>
+
+          {errorMsg && (
+            <div className="mt-3 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <div>
+                <p className="font-semibold">Error</p>
+                <p className="mt-0.5 leading-relaxed opacity-90">{errorMsg}</p>
+              </div>
+            </div>
+          )}
+
+          {live?.message && live.state === 'success' && (
+            <p className="mt-3 text-xs leading-relaxed text-brand-800">{live.message}</p>
+          )}
+
+          {isFailed && !publishing && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => onRetryOne(board.name)}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Retry publish
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function JobDistributionPage() {
@@ -76,50 +248,83 @@ export default function JobDistributionPage() {
 
   const loadHistory = useCallback(async () => {
     try {
-      const { data } = await distributionApi.history(id, { limit: 40 });
+      const { data } = await distributionApi.history(id, { limit: 50 });
       setHistory(data.data.history || []);
     } catch {
       // non-blocking
     }
   }, [id]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data } = await distributionApi.forJob(id);
-      setPayload(data.data);
-      const primaryNames = data.data.primaryBoards || PRIMARY_BOARDS;
-      const preselect = data.data.boards
-        .filter(
-          (b) =>
-            primaryNames.includes(b.name) &&
-            b.publishedStatus !== 'published'
-        )
-        .map((b) => b.name);
-      setSelected((prev) => (prev.length ? prev : preselect));
-      await loadHistory();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [id, loadHistory, toast]);
+  const load = useCallback(
+    async ({ preserveSelection = true } = {}) => {
+      setLoading(true);
+      try {
+        const { data } = await distributionApi.forJob(id);
+        setPayload(data.data);
+        const primaryNames = data.data.primaryBoards || [];
+        const preselect = data.data.boards
+          .filter(
+            (b) =>
+              primaryNames.includes(b.name) && b.publishedStatus !== 'published'
+          )
+          .map((b) => b.name);
+        setSelected((prev) => {
+          if (preserveSelection && prev.length) {
+            return prev.filter((name) =>
+              data.data.boards.some((b) => b.name === name)
+            );
+          }
+          return preselect;
+        });
+        await loadHistory();
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [id, loadHistory, toast]
+  );
 
   useEffect(() => {
-    load();
+    load({ preserveSelection: false });
   }, [id]);
 
   const primaryBoards = useMemo(() => {
     if (!payload) return [];
-    const names = payload.primaryBoards || PRIMARY_BOARDS;
-    return payload.boards.filter((b) => names.includes(b.name));
+    return payload.boards.filter((b) => b.primary);
   }, [payload]);
 
   const otherBoards = useMemo(() => {
     if (!payload) return [];
-    const names = new Set(payload.primaryBoards || PRIMARY_BOARDS);
-    return payload.boards.filter((b) => !names.has(b.name));
+    return payload.boards.filter((b) => !b.primary);
   }, [payload]);
+
+  const summary = useMemo(() => {
+    if (!payload) return { published: 0, failed: 0, pending: 0, total: 0 };
+    const boards = payload.boards;
+    return {
+      total: boards.length,
+      published: boards.filter((b) =>
+        ['published', 'updated'].includes(b.publishedStatus)
+      ).length,
+      failed: boards.filter((b) => b.publishedStatus === 'failed').length,
+      pending: boards.filter((b) =>
+        ['not_published', 'pending'].includes(b.publishedStatus)
+      ).length,
+    };
+  }, [payload]);
+
+  const failedBoardNames = useMemo(() => {
+    if (!payload) return [];
+    const fromSession = Object.entries(boardProgress)
+      .filter(([, v]) => v.state === 'failed')
+      .map(([name]) => name);
+    const fromDb = payload.boards
+      .filter((b) => b.publishedStatus === 'failed')
+      .map((b) => b.name);
+    return [...new Set([...fromSession, ...fromDb])];
+  }, [payload, boardProgress]);
 
   const toggle = (name) => {
     if (publishing) return;
@@ -133,9 +338,19 @@ export default function JobDistributionPage() {
     setSelected(primaryBoards.map((b) => b.name));
   };
 
+  const selectAll = () => {
+    if (publishing || !payload) return;
+    setSelected(payload.boards.map((b) => b.name));
+  };
+
   const clearSelection = () => {
     if (publishing) return;
     setSelected([]);
+  };
+
+  const selectFailed = () => {
+    if (publishing) return;
+    setSelected(failedBoardNames);
   };
 
   const copyId = async (value) => {
@@ -147,35 +362,39 @@ export default function JobDistributionPage() {
     }
   };
 
-  /**
-   * Publish boards one-by-one so the UI can show live progress per board.
-   * Each call still hits the mock adapter architecture on the server.
-   */
-  const publish = async () => {
-    if (!selected.length) {
+  const publishBoards = async (boardNames) => {
+    if (!boardNames.length) {
       toast.info('Select at least one board');
       return;
     }
 
     setPublishing(true);
     setSessionResults([]);
-    setProgress({ current: 0, total: selected.length });
+    setProgress({ current: 0, total: boardNames.length });
 
     const initial = {};
-    selected.forEach((name) => {
-      initial[name] = { state: 'queued', message: 'Queued', externalJobId: null };
+    boardNames.forEach((name) => {
+      initial[name] = {
+        state: 'queued',
+        message: 'Queued for DEMO mock publish',
+        externalJobId: null,
+      };
     });
     setBoardProgress(initial);
 
     const results = [];
 
-    for (let i = 0; i < selected.length; i++) {
-      const board = selected[i];
+    for (let i = 0; i < boardNames.length; i++) {
+      const board = boardNames[i];
       setBoardProgress((prev) => ({
         ...prev,
-        [board]: { state: 'publishing', message: 'Publishing via DEMO mock adapter…', externalJobId: null },
+        [board]: {
+          state: 'publishing',
+          message: 'Publishing via DEMO mock adapter…',
+          externalJobId: null,
+        },
       }));
-      setProgress({ current: i, total: selected.length });
+      setProgress({ current: i, total: boardNames.length });
 
       try {
         const { data } = await distributionApi.publish({
@@ -218,134 +437,47 @@ export default function JobDistributionPage() {
         }));
       }
 
-      setProgress({ current: i + 1, total: selected.length });
+      setProgress({ current: i + 1, total: boardNames.length });
       setSessionResults([...results]);
     }
 
     const ok = results.filter((r) => r.success).length;
-    toast.success(`[DEMO] Finished: ${ok}/${results.length} boards published via mock adapters`);
+    const failed = results.length - ok;
+    if (failed === 0) {
+      toast.success(
+        `[DEMO] All ${ok} boards published via mock adapters — no live APIs called`
+      );
+    } else {
+      toast.info(
+        `[DEMO] Finished: ${ok} succeeded, ${failed} failed (mock adapters only)`
+      );
+    }
     setPublishing(false);
-    await load();
+    await load({ preserveSelection: true });
   };
 
-  if (loading) return <PageSkeleton />;
+  const publish = () => publishBoards(selected);
+
+  const retryFailed = () => {
+    if (!failedBoardNames.length) {
+      toast.info('No failed boards to retry');
+      return;
+    }
+    setSelected(failedBoardNames);
+    publishBoards(failedBoardNames);
+  };
+
+  const retryOne = (name) => {
+    setSelected([name]);
+    publishBoards([name]);
+  };
+
+  if (loading && !payload) return <PageSkeleton />;
   if (!payload) return null;
 
   const { job } = payload;
-
-  const renderBoardCard = (board) => {
-    const checked = selected.includes(board.name);
-    const live = boardProgress[board.name];
-    const statusLabel =
-      live?.state === 'publishing'
-        ? 'Publishing…'
-        : live?.state === 'success'
-          ? 'Success'
-          : live?.state === 'failed'
-            ? 'Failed'
-            : board.publishedStatus === 'not_published'
-              ? 'Not published'
-              : board.publishedStatus;
-
-    const statusTone =
-      live?.state === 'publishing'
-        ? 'pending'
-        : live?.state === 'success'
-          ? 'success'
-          : live?.state === 'failed'
-            ? 'failed'
-            : board.publishedStatus === 'published'
-              ? 'published'
-              : board.publishedStatus === 'failed'
-                ? 'failed'
-                : 'draft';
-
-    return (
-      <button
-        key={board.name}
-        type="button"
-        disabled={publishing}
-        onClick={() => toggle(board.name)}
-        className={`rounded-2xl border p-4 text-left transition ${
-          checked
-            ? 'border-brand-400 bg-brand-50/60 ring-2 ring-brand-500/20'
-            : 'border-ink-200 bg-white hover:border-ink-300'
-        } ${publishing ? 'cursor-wait opacity-90' : ''}`}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-100 text-ink-700">
-              <Globe2 className="h-5 w-5" />
-            </span>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-display font-semibold text-ink-900">{board.name}</p>
-                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                  DEMO
-                </span>
-              </div>
-              <p className="text-xs text-ink-500">
-                {board.region} · {board.type} · Mock adapter
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <BoardStatusIcon state={live?.state} />
-            <input
-              type="checkbox"
-              readOnly
-              checked={checked}
-              className="accent-brand-600"
-              tabIndex={-1}
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge status={board.connectionStatus}>
-            {String(board.connectionStatus).replace('_', ' ')}
-          </Badge>
-          <Badge status={statusTone}>{statusLabel}</Badge>
-        </div>
-
-        {(live?.externalJobId || board.externalJobId) && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg bg-ink-50 px-2.5 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">
-                External job ID
-              </p>
-              <p className="truncate font-mono text-xs text-ink-700">
-                {live?.externalJobId || board.externalJobId}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="rounded p-1 text-ink-400 hover:bg-white hover:text-ink-700"
-              onClick={(e) => {
-                e.stopPropagation();
-                copyId(live?.externalJobId || board.externalJobId);
-              }}
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
-        {live?.message && live.state !== 'queued' && (
-          <p className="mt-2 text-xs text-ink-500">{live.message}</p>
-        )}
-        {!live && board.errorMessage && (
-          <p className="mt-2 text-xs text-rose-600">{board.errorMessage}</p>
-        )}
-        {!live && board.publishedAt && (
-          <p className="mt-1 text-xs text-ink-400">
-            Published {formatDateTime(board.publishedAt)}
-            {board.durationMs != null ? ` · ${board.durationMs} ms` : ''}
-          </p>
-        )}
-      </button>
-    );
-  };
+  const sessionFailed = sessionResults.filter((r) => !r.success);
+  const sessionOk = sessionResults.filter((r) => r.success);
 
   return (
     <div>
@@ -359,177 +491,306 @@ export default function JobDistributionPage() {
 
       <PageHeader
         title="Job distribution"
-        description={`Publish “${job.title}” to multiple boards through DEMO mock adapters. No real job board APIs are called.`}
+        description={`Distribute “${job.title}” across job boards using DEMO mock adapters.`}
         actions={
-          <Button onClick={publish} loading={publishing} disabled={!selected.length || publishing}>
-            {publishing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Publishing…
-              </>
-            ) : (
-              `Publish to selected (${selected.length})`
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={publishing}
+              onClick={() => load({ preserveSelection: true })}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+            {failedBoardNames.length > 0 && (
+              <Button
+                variant="secondary"
+                onClick={retryFailed}
+                disabled={publishing}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Retry failed ({failedBoardNames.length})
+              </Button>
             )}
-          </Button>
+            <Button
+              onClick={publish}
+              loading={publishing}
+              disabled={!selected.length || publishing}
+            >
+              {publishing
+                ? 'Publishing…'
+                : `Publish to selected (${selected.length})`}
+            </Button>
+          </div>
         }
       />
 
-      <div className="mb-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <p className="font-semibold">DEMO / MOCK integrations only</p>
-          <p className="mt-0.5 text-amber-900/90">
-            Indeed, LinkedIn, Monster, JobStreet, Kalibrr, OnlineJobs.ph, JobsDB, and PhilJobNet
-            use mock adapters. Responses simulate latency and generate demo external job IDs —
-            they are not live API integrations.
-          </p>
-        </div>
+      <Alert tone="warning" title="DEMO / MOCK integrations only" className="mb-5">
+        Every board on this page uses a mock adapter. HireSync simulates latency and demo
+        external job IDs for client demos — <strong>no real job board APIs are connected or
+        called</strong>.
+      </Alert>
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Boards in catalog', value: summary.total },
+          { label: 'Published', value: summary.published, tone: 'text-brand-700' },
+          { label: 'Failed', value: summary.failed, tone: 'text-rose-700' },
+          { label: 'Selected', value: selected.length, tone: 'text-ink-900' },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-2xl border border-ink-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(28,34,44,0.04)]"
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-400">
+              {stat.label}
+            </p>
+            <p
+              className={cn(
+                'mt-1 font-display text-2xl font-bold tracking-tight',
+                stat.tone || 'text-ink-900'
+              )}
+            >
+              {stat.value}
+            </p>
+          </div>
+        ))}
       </div>
 
-      {publishing && (
-        <Card className="mb-4">
-          <CardBody>
-            <p className="text-sm font-semibold text-ink-900">Publishing progress</p>
-            <ProgressBar current={progress.current} total={progress.total} />
-            <ul className="mt-4 space-y-2">
-              {selected.map((name) => {
+      {(publishing || sessionResults.length > 0) && (
+        <Card className="mb-5">
+          <CardHeader
+            title="Publishing progress"
+            subtitle="One board at a time through DEMO mock adapters"
+            action={<DemoBadge />}
+          />
+          <CardBody className="space-y-4">
+            {publishing && (
+              <ProgressBar current={progress.current} total={progress.total} />
+            )}
+            {!publishing && sessionResults.length > 0 && (
+              <div className="flex flex-wrap gap-3 text-sm">
+                <span className="inline-flex items-center gap-1.5 font-medium text-brand-800">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {sessionOk.length} succeeded
+                </span>
+                <span className="inline-flex items-center gap-1.5 font-medium text-rose-700">
+                  <XCircle className="h-4 w-4" />
+                  {sessionFailed.length} failed
+                </span>
+              </div>
+            )}
+            <ul className="space-y-2">
+              {(publishing
+                ? selected
+                : sessionResults.map((r) => r.board)
+              ).map((name) => {
                 const p = boardProgress[name];
+                const result = sessionResults.find((r) => r.board === name);
                 return (
                   <li
                     key={name}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-ink-50 px-3 py-2 text-sm"
+                    className="flex flex-col gap-1 rounded-xl border border-ink-100 bg-ink-50/80 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <span className="flex items-center gap-2 font-medium text-ink-800">
+                    <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
                       <BoardStatusIcon state={p?.state} />
                       {name}
-                      <span className="rounded bg-amber-100 px-1 text-[10px] font-bold text-amber-800">
-                        DEMO
-                      </span>
+                      <DemoBadge />
                     </span>
-                    <span className="text-xs text-ink-500">
-                      {p?.state === 'queued' && 'Waiting'}
-                      {p?.state === 'publishing' && 'In progress…'}
-                      {p?.state === 'success' && 'Success'}
-                      {p?.state === 'failed' && 'Failed'}
+                    <span className="text-xs text-ink-500 sm:text-right">
+                      {p?.state === 'queued' && 'Waiting in queue'}
+                      {p?.state === 'publishing' && 'Mock publish in progress…'}
+                      {p?.state === 'success' &&
+                        `Success${result?.externalJobId ? ` · ${result.externalJobId}` : ''}`}
+                      {p?.state === 'failed' && (p.message || 'Failed')}
                     </span>
                   </li>
                 );
               })}
             </ul>
+            {!publishing && sessionFailed.length > 0 && (
+              <Button size="sm" variant="secondary" onClick={retryFailed}>
+                <RotateCcw className="h-3.5 w-3.5" />
+                Retry {sessionFailed.length} failed board
+                {sessionFailed.length === 1 ? '' : 's'}
+              </Button>
+            )}
           </CardBody>
         </Card>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <p className="mr-2 text-sm font-semibold text-ink-800">Primary demo boards</p>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <p className="mr-1 text-sm font-semibold text-ink-800">Board selection</p>
         <Button size="sm" variant="secondary" onClick={selectPrimary} disabled={publishing}>
-          Select all 8
+          Select primary ({primaryBoards.length})
         </Button>
+        <Button size="sm" variant="secondary" onClick={selectAll} disabled={publishing}>
+          Select all
+        </Button>
+        {failedBoardNames.length > 0 && (
+          <Button size="sm" variant="secondary" onClick={selectFailed} disabled={publishing}>
+            Select failed
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={clearSelection} disabled={publishing}>
           Clear
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {primaryBoards.map(renderBoardCard)}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="font-display text-lg font-semibold text-ink-900">
+          Primary demo boards
+        </h2>
+        <DemoBadge />
+      </div>
+      <p className="mb-4 text-sm text-ink-500">
+        Core channels for this demo. Each card shows connection and publish status from HireSync —
+        not live board dashboards.
+      </p>
+
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {primaryBoards.map((board) => (
+          <BoardCard
+            key={board.name}
+            board={board}
+            checked={selected.includes(board.name)}
+            live={boardProgress[board.name]}
+            publishing={publishing}
+            onToggle={toggle}
+            onCopy={copyId}
+            onRetryOne={retryOne}
+          />
+        ))}
       </div>
 
       {otherBoards.length > 0 && (
         <>
-          <p className="mb-3 mt-8 text-sm font-semibold text-ink-800">
-            Additional catalog boards (also DEMO)
+          <div className="mb-2 mt-10 flex items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold text-ink-900">
+              Additional catalog boards
+            </h2>
+            <DemoBadge />
+          </div>
+          <p className="mb-4 text-sm text-ink-500">
+            Same mock architecture as primary boards — still DEMO only.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {otherBoards.map(renderBoardCard)}
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {otherBoards.map((board) => (
+              <BoardCard
+                key={board.name}
+                board={board}
+                checked={selected.includes(board.name)}
+                live={boardProgress[board.name]}
+                publishing={publishing}
+                onToggle={toggle}
+                onCopy={copyId}
+                onRetryOne={retryOne}
+              />
+            ))}
           </div>
         </>
       )}
 
       {sessionResults.length > 0 && (
-        <Card className="mt-6">
+        <Card className="mt-8">
           <CardHeader
             title="This session — publish results"
-            subtitle="Generated by mock adapters in this browser session"
+            subtitle="Outcomes from mock adapters in your current browser session"
+            action={<DemoBadge />}
           />
-          <CardBody className="space-y-2 p-0">
+          <CardBody className="space-y-0 p-0">
             {sessionResults.map((r) => (
               <div
-                key={`${r.board}-${r.externalJobId || r.message}`}
-                className="flex flex-col gap-2 border-t border-ink-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+                key={`${r.board}-${r.externalJobId || r.message}-${r.durationMs}`}
+                className="flex flex-col gap-2 border-t border-ink-100 px-5 py-3.5 first:border-t-0 sm:flex-row sm:items-start sm:justify-between"
               >
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-ink-900">{r.board}</p>
                     <Badge status={r.success ? 'success' : 'failed'}>
                       {r.success ? 'Success' : 'Failure'}
                     </Badge>
-                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                      DEMO
-                    </span>
+                    <DemoBadge />
                   </div>
-                  <p className="mt-1 text-xs text-ink-500">{r.message}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-500">{r.message}</p>
                   {r.externalJobId && (
-                    <p className="mt-1 font-mono text-xs text-ink-700">
+                    <p className="mt-1.5 font-mono text-xs text-ink-700">
                       External ID: {r.externalJobId}
                     </p>
                   )}
                 </div>
-                <p className="text-xs text-ink-400">
-                  {r.durationMs != null ? `${r.durationMs} ms` : ''}
-                </p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <p className="text-xs text-ink-400">
+                    {r.durationMs != null ? `${r.durationMs} ms` : ''}
+                  </p>
+                  {!r.success && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={publishing}
+                      onClick={() => retryOne(r.board)}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Retry
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </CardBody>
         </Card>
       )}
 
-      <Card className="mt-6">
+      <Card className="mt-8">
         <CardHeader
-          title="Publishing history"
+          title="Distribution history"
           subtitle="Past DEMO publish and close events for this job"
+          action={<DemoBadge />}
         />
         <CardBody className="p-0">
           {history.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-ink-500">
-              No publish history yet. Select boards and click Publish to selected.
-            </p>
+            <EmptyState
+              title="No distribution history yet"
+              description="Select boards above and publish to generate demo history with external job IDs."
+            />
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-ink-100 bg-ink-50 text-xs uppercase text-ink-500">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3">Timestamp</th>
-                    <th className="px-4 py-3">Board</th>
-                    <th className="px-4 py-3">Action</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">External job ID</th>
-                    <th className="px-4 py-3">Response</th>
-                    <th className="px-4 py-3">Duration</th>
+                    <th>Timestamp</th>
+                    <th>Board</th>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th>External job ID</th>
+                    <th>Response</th>
+                    <th>Duration</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.map((row) => (
-                    <tr key={row.id} className="border-b border-ink-50 align-top">
-                      <td className="whitespace-nowrap px-4 py-3 text-ink-500">
+                    <tr key={row.id} className="align-top">
+                      <td className="whitespace-nowrap text-ink-500">
                         {formatDateTime(row.timestamp)}
                       </td>
-                      <td className="px-4 py-3 font-medium text-ink-900">
-                        {row.board || '—'}
-                        <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-bold text-amber-800">
-                          DEMO
+                      <td>
+                        <span className="inline-flex flex-wrap items-center gap-1.5 font-medium text-ink-900">
+                          {row.board || '—'}
+                          <DemoBadge />
                         </span>
                       </td>
-                      <td className="px-4 py-3">{row.action}</td>
-                      <td className="px-4 py-3">
+                      <td>{row.action}</td>
+                      <td>
                         <Badge status={row.status}>{row.status}</Badge>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-ink-700">
+                      <td className="font-mono text-xs text-ink-700">
                         {row.externalJobId || '—'}
                       </td>
-                      <td className="max-w-xs px-4 py-3 text-xs text-ink-600">
+                      <td className="max-w-xs text-xs leading-relaxed text-ink-600">
                         {row.response || '—'}
                       </td>
-                      <td className="px-4 py-3 text-ink-500">
+                      <td className="text-ink-500">
                         {row.durationMs != null ? `${row.durationMs} ms` : '—'}
                       </td>
                     </tr>
@@ -540,6 +801,19 @@ export default function JobDistributionPage() {
           )}
         </CardBody>
       </Card>
+
+      {selected.length > 0 && !publishing && (
+        <div className="sticky bottom-4 z-20 mt-8">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-200 bg-white/95 px-4 py-3 shadow-lg shadow-ink-900/10 backdrop-blur">
+            <p className="text-sm text-ink-600">
+              <span className="font-semibold text-ink-900">{selected.length}</span> board
+              {selected.length === 1 ? '' : 's'} selected ·{' '}
+              <span className="font-medium text-amber-800">DEMO mock publish</span>
+            </p>
+            <Button onClick={publish}>Publish to selected ({selected.length})</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

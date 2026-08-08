@@ -4,8 +4,10 @@ import { LayoutGrid, List, Users } from 'lucide-react';
 import { candidatesApi } from '../../services/api';
 import { CANDIDATE_STATUSES, formatDate, getErrorMessage } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
+import { useCandidateSources } from '../../hooks/useCandidateSources';
 import { PageHeader } from '../../components/PageHeader';
 import Badge from '../../components/ui/Badge';
+import SourceBadge from '../../components/ui/SourceBadge';
 import Button from '../../components/ui/Button';
 import Input, { Select } from '../../components/ui/Input';
 import EmptyState from '../../components/ui/EmptyState';
@@ -15,17 +17,15 @@ function CandidateCard({ c }) {
   return (
     <Link
       to={`/app/candidates/${c._id}`}
-      className="block rounded-xl border border-ink-200 bg-white p-3 shadow-sm transition hover:border-brand-300"
+      className="block rounded-xl border border-ink-200/80 bg-white p-3 shadow-[0_1px_2px_rgba(28,34,44,0.04)] transition hover:border-brand-300 hover:shadow-sm"
     >
-      <p className="font-semibold text-ink-900">{c.name}</p>
-      <p className="truncate text-xs text-ink-500">{c.email}</p>
-      <p className="mt-2 truncate text-xs text-ink-600">
-        {c.jobId?.title || 'Job'}
-      </p>
-      <div className="mt-2 flex flex-wrap items-center gap-1">
-        <Badge>{c.source}</Badge>
-        <span className="text-[11px] text-ink-400">{formatDate(c.appliedAt)}</span>
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 font-semibold text-ink-900">{c.name}</p>
+        <SourceBadge source={c.source} className="shrink-0" />
       </div>
+      <p className="truncate text-xs text-ink-500">{c.email}</p>
+      <p className="mt-2 truncate text-xs text-ink-600">{c.jobId?.title || 'Untitled role'}</p>
+      <p className="mt-2 text-[11px] text-ink-400">{formatDate(c.appliedAt)}</p>
     </Link>
   );
 }
@@ -33,13 +33,15 @@ function CandidateCard({ c }) {
 export default function CandidatesPage() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
+  const { sources } = useCandidateSources();
   const [view, setView] = useState('pipeline');
   const [pipeline, setPipeline] = useState(null);
+  const [statuses, setStatuses] = useState(CANDIDATE_STATUSES);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
-    source: '',
+    source: params.get('source') || '',
     status: '',
     jobId: params.get('jobId') || '',
   });
@@ -52,8 +54,12 @@ export default function CandidatesPage() {
         if (view === 'pipeline') {
           const { data } = await candidatesApi.pipeline({
             jobId: filters.jobId || undefined,
+            source: filters.source || undefined,
           });
-          if (!cancelled) setPipeline(data.data.columns);
+          if (!cancelled) {
+            setPipeline(data.data.columns);
+            if (data.data.statuses?.length) setStatuses(data.data.statuses);
+          }
         } else {
           const { data } = await candidatesApi.list({
             search: filters.search || undefined,
@@ -80,14 +86,16 @@ export default function CandidatesPage() {
     <div>
       <PageHeader
         title="Candidates"
-        description="Pipeline and list views with source tracking across every board."
+        description="Pipeline and list views with source tracking from every application channel."
         actions={
-          <div className="flex rounded-lg border border-ink-200 bg-white p-1">
+          <div className="flex rounded-xl border border-ink-200 bg-white p-1 shadow-sm shadow-ink-900/5">
             <button
               type="button"
               onClick={() => setView('pipeline')}
-              className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium ${
-                view === 'pipeline' ? 'bg-brand-50 text-brand-800' : 'text-ink-500'
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                view === 'pipeline'
+                  ? 'bg-brand-50 text-brand-800'
+                  : 'text-ink-500 hover:text-ink-800'
               }`}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -96,8 +104,10 @@ export default function CandidatesPage() {
             <button
               type="button"
               onClick={() => setView('list')}
-              className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium ${
-                view === 'list' ? 'bg-brand-50 text-brand-800' : 'text-ink-500'
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                view === 'list'
+                  ? 'bg-brand-50 text-brand-800'
+                  : 'text-ink-500 hover:text-ink-800'
               }`}
             >
               <List className="h-4 w-4" />
@@ -107,7 +117,7 @@ export default function CandidatesPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 rounded-2xl border border-ink-200 bg-white p-4 md:grid-cols-4">
+      <div className="filter-bar md:grid-cols-4">
         <Input
           placeholder="Search name or email"
           value={filters.search}
@@ -116,21 +126,24 @@ export default function CandidatesPage() {
         <Select
           value={filters.source}
           onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+          aria-label="Filter by source"
         >
           <option value="">All sources</option>
-          {['Indeed', 'LinkedIn', 'Monster', 'JobStreet', 'Kalibrr', 'OnlineJobs.ph', 'JobsDB', 'Direct'].map(
-            (s) => (
-              <option key={s}>{s}</option>
-            )
-          )}
+          {sources.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </Select>
         <Select
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
         >
           <option value="">All statuses</option>
-          {CANDIDATE_STATUSES.map((s) => (
-            <option key={s}>{s}</option>
+          {statuses.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
         </Select>
         {filters.jobId && (
@@ -146,6 +159,13 @@ export default function CandidatesPage() {
         )}
       </div>
 
+      {filters.source && (
+        <p className="mb-4 flex flex-wrap items-center gap-2 text-sm text-ink-500">
+          Showing candidates from
+          <SourceBadge source={filters.source} />
+        </p>
+      )}
+
       {loading ? (
         view === 'pipeline' ? (
           <PageSkeleton />
@@ -154,9 +174,8 @@ export default function CandidatesPage() {
         )
       ) : view === 'pipeline' ? (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {CANDIDATE_STATUSES.map((status) => {
+          {statuses.map((status) => {
             const cards = (pipeline?.[status] || []).filter((c) => {
-              if (filters.source && c.source !== filters.source) return false;
               if (filters.search) {
                 const q = filters.search.toLowerCase();
                 if (
@@ -171,17 +190,19 @@ export default function CandidatesPage() {
             return (
               <div
                 key={status}
-                className="w-72 shrink-0 rounded-2xl border border-ink-200 bg-ink-50/80 p-3"
+                className="w-72 shrink-0 rounded-2xl border border-ink-200/80 bg-ink-50/80 p-3"
               >
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between px-0.5">
                   <p className="text-sm font-semibold text-ink-800">{status}</p>
-                  <span className="rounded-md bg-white px-2 py-0.5 text-xs font-semibold text-ink-500">
+                  <span className="rounded-md bg-white px-2 py-0.5 text-xs font-semibold text-ink-500 shadow-sm">
                     {cards.length}
                   </span>
                 </div>
                 <div className="space-y-2">
                   {cards.length === 0 ? (
-                    <p className="px-1 py-6 text-center text-xs text-ink-400">Empty</p>
+                    <p className="px-1 py-8 text-center text-xs text-ink-400">
+                      No candidates in this stage
+                    </p>
                   ) : (
                     cards.map((c) => <CandidateCard key={c._id} c={c} />)
                   )}
@@ -197,35 +218,38 @@ export default function CandidatesPage() {
           description="Publish jobs and sync applications, or wait for direct applies."
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <div className="panel overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-ink-100 bg-ink-50 text-xs uppercase text-ink-500">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Candidate</th>
-                  <th className="px-4 py-3">Job</th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Applied</th>
+                  <th>Candidate</th>
+                  <th>Job</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Applied</th>
                 </tr>
               </thead>
               <tbody>
                 {list.map((c) => (
-                  <tr key={c._id} className="border-b border-ink-50 hover:bg-ink-50/60">
-                    <td className="px-4 py-3">
-                      <Link to={`/app/candidates/${c._id}`} className="font-semibold text-brand-700">
+                  <tr key={c._id}>
+                    <td>
+                      <Link
+                        to={`/app/candidates/${c._id}`}
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
                         {c.name}
                       </Link>
                       <p className="text-xs text-ink-500">{c.email}</p>
                     </td>
-                    <td className="px-4 py-3">{c.jobId?.title || '—'}</td>
-                    <td className="px-4 py-3">
-                      <Badge>{c.source}</Badge>
+                    <td>{c.jobId?.title || '—'}</td>
+                    <td>
+                      <SourceBadge source={c.source} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <Badge status={c.status}>{c.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-ink-500">{formatDate(c.appliedAt)}</td>
+                    <td className="text-ink-500">{formatDate(c.appliedAt)}</td>
                   </tr>
                 ))}
               </tbody>

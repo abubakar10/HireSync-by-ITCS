@@ -10,6 +10,7 @@ import {
 import { useToast } from '../../context/ToastContext';
 import { PageHeader } from '../../components/PageHeader';
 import Badge from '../../components/ui/Badge';
+import SourceBadge from '../../components/ui/SourceBadge';
 import Button from '../../components/ui/Button';
 import { Select, Textarea } from '../../components/ui/Input';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
@@ -74,7 +75,12 @@ export default function CandidateDetailPage() {
       <PageHeader
         title={candidate.name}
         description={`${candidate.email}${candidate.phone ? ` · ${candidate.phone}` : ''}`}
-        actions={<Badge status={candidate.status}>{candidate.status}</Badge>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <SourceBadge source={candidate.source} showLabel />
+            <Badge status={candidate.status}>{candidate.status}</Badge>
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -82,8 +88,10 @@ export default function CandidateDetailPage() {
           <Card>
             <CardHeader title="Application" />
             <CardBody className="space-y-3 text-sm">
-              <div className="flex flex-wrap gap-2">
-                <Badge>{candidate.source}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-ink-500">Came from</span>
+                <SourceBadge source={candidate.source} />
+                <span className="text-ink-400">·</span>
                 <span className="text-ink-500">
                   Applied {formatDateTime(candidate.appliedAt)}
                 </span>

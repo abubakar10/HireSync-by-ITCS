@@ -79,7 +79,7 @@ export default function AdminUsersPage({ recruitersOnly = false }) {
         }
       />
 
-      <div className="mb-4 max-w-sm">
+      <div className="filter-bar max-w-sm sm:max-w-none sm:grid-cols-1 md:max-w-sm">
         <Input
           placeholder="Search name, email, company"
           value={search}
@@ -87,37 +87,37 @@ export default function AdminUsersPage({ recruitersOnly = false }) {
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <div className="panel overflow-hidden">
         {loading ? (
           <TableSkeleton />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-ink-100 bg-ink-50 text-xs uppercase text-ink-500">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Company</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Joined</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Company</th>
+                  <th>Status</th>
+                  <th>Joined</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u._id} className="border-b border-ink-50">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{u.name}</td>
-                    <td className="px-4 py-3 text-ink-600">{u.email}</td>
-                    <td className="px-4 py-3">
+                  <tr key={u._id}>
+                    <td className="font-semibold text-ink-900">{u.name}</td>
+                    <td className="text-ink-600">{u.email}</td>
+                    <td>
                       <Badge>{u.role}</Badge>
                     </td>
-                    <td className="px-4 py-3">{u.company || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td>{u.company || '—'}</td>
+                    <td>
                       <Badge status={u.isActive ? 'published' : 'closed'}>
                         {u.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-ink-500">{formatDate(u.createdAt)}</td>
+                    <td className="text-ink-500">{formatDate(u.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

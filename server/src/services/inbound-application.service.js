@@ -77,9 +77,16 @@ export const pickDemoApplicant = () => {
   };
 };
 
-export const listSimulateOptions = async () => {
-  const distributions = await JobDistribution.find({ status: 'published' })
-    .populate('jobId', 'title company location status employmentType')
+export const listSimulateOptions = async ({ ownerUserId = null } = {}) => {
+  const distFilter = { status: 'published' };
+
+  if (ownerUserId) {
+    const ownedJobs = await Job.find({ createdBy: ownerUserId }).select('_id');
+    distFilter.jobId = { $in: ownedJobs.map((j) => j._id) };
+  }
+
+  const distributions = await JobDistribution.find(distFilter)
+    .populate('jobId', 'title company location status employmentType createdBy')
     .sort({ publishedAt: -1 })
     .limit(50);
 
@@ -135,6 +142,7 @@ export const processInboundApplication = async ({
   payload,
   actorUserId = null,
   simulated = false,
+  requireOwnerId = null,
 }) => {
   const started = Date.now();
   const board = normalizeBoardName(boardParam);
@@ -190,6 +198,13 @@ export const processInboundApplication = async ({
   const job = await Job.findById(distribution.jobId);
   if (!job) {
     throw new AppError('Linked job not found for this distribution', 404);
+  }
+
+  if (
+    requireOwnerId &&
+    job.createdBy.toString() !== requireOwnerId.toString()
+  ) {
+    throw new AppError('Insufficient permissions for this job distribution', 403);
   }
 
   if (job.status === 'archived' || job.status === 'closed') {
@@ -324,7 +339,7 @@ export const processInboundApplication = async ({
       source: sourceBoard,
       externalJobId,
       externalApplicationId: appId,
-      jobId: job._id,
+      jobId: job._id.toString(),
       jobTitle: job.title,
       company: job.company,
       candidateStatus: 'New',

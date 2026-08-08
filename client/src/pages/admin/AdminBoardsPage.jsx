@@ -5,9 +5,11 @@ import { activityApi, integrationsApi } from '../../services/api';
 import { formatDateTime, getErrorMessage } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { PageHeader } from '../../components/PageHeader';
-import Badge from '../../components/ui/Badge';
+import Badge, { DemoBadge } from '../../components/ui/Badge';
+import SourceBadge from '../../components/ui/SourceBadge';
 import Button from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import Alert from '../../components/ui/Alert';
 import { PageSkeleton } from '../../components/ui/Skeleton';
 import SimulateApplicationModal from '../../components/SimulateApplicationModal';
 
@@ -64,13 +66,11 @@ export default function AdminBoardsPage() {
         }
       />
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <p className="font-semibold">Inbound candidate flow (DEMO)</p>
-        <p className="mt-1 text-amber-900/90">
-          1) Publish a job to a board → 2) Simulate Application → 3) Candidate appears in pipeline under{' '}
-          <strong>New</strong> with the board as source. No real job board credentials required.
-        </p>
-      </div>
+      <Alert tone="warning" title="Inbound candidate flow (DEMO)" className="mb-4">
+        1) Publish a job to a board → 2) Simulate Application → 3) Candidate appears in pipeline
+        under <strong>New</strong> with the board as source. No real job board credentials
+        required.
+      </Alert>
 
       {lastResult && (
         <Card className="mb-4 border-brand-200">
@@ -79,7 +79,7 @@ export default function AdminBoardsPage() {
               <p className="text-sm font-semibold text-ink-900">{lastResult.message}</p>
               <p className="mt-1 text-sm text-ink-600">
                 {lastResult.candidate?.name} · Source{' '}
-                <Badge>{lastResult.candidate?.source}</Badge> · Column{' '}
+                <SourceBadge source={lastResult.candidate?.source} /> · Column{' '}
                 <Badge status="New">New</Badge>
               </p>
             </div>
@@ -106,22 +106,22 @@ export default function AdminBoardsPage() {
             <CardBody>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-100">
-                    <Plug className="h-5 w-5 text-ink-700" />
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                    <Plug className="h-5 w-5" strokeWidth={1.75} />
                   </span>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="font-display font-semibold text-ink-900">{item.name}</p>
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
-                        DEMO
-                      </span>
+                      <DemoBadge />
                     </div>
                     <p className="text-xs text-ink-500">
                       {item.type} · {item.region}
                     </p>
                   </div>
                 </div>
-                <Badge status={item.status}>{String(item.status).replace('_', ' ')}</Badge>
+                <Badge status={item.status}>
+                  {String(item.status).replaceAll('_', ' ')}
+                </Badge>
               </div>
               <p className="mt-3 text-xs text-ink-500">
                 Last sync {formatDateTime(item.lastSyncAt)}
@@ -135,10 +135,7 @@ export default function AdminBoardsPage() {
                 >
                   {item.enabled ? 'Disable' : 'Enable'}
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setSimulateOpen(true)}
-                >
+                <Button size="sm" onClick={() => setSimulateOpen(true)}>
                   Simulate
                 </Button>
               </div>

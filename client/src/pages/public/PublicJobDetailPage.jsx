@@ -59,7 +59,7 @@ export default function PublicJobDetailPage() {
         All jobs
       </Link>
 
-      <div className="mt-4 rounded-2xl border border-ink-200 bg-white p-6 sm:p-8">
+      <div className="mt-4 rounded-2xl border border-ink-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(28,34,44,0.04)] sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold text-ink-900">{job.title}</h1>

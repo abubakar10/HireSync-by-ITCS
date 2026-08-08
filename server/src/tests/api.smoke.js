@@ -124,16 +124,20 @@ async function run() {
   });
 
   await test('POST /api/auth/register blocks public admin', async () => {
-    const { data } = await req('POST', '/api/auth/register', {
+    const { status, data } = await req('POST', '/api/auth/register', {
       body: {
         name: 'Hacker',
         email: `hack.${Date.now()}@example.com`,
         password: 'Password123!',
         role: 'admin',
       },
-      expectStatus: 201,
     });
-    assert(data.data.user.role === 'candidate', 'admin self-register must be downgraded');
+    // Rejected by validator (admin not allowed) or forced away from admin
+    if (status === 201) {
+      assert(data.data.user.role !== 'admin', 'admin self-register must be blocked');
+    } else {
+      assert([400, 403].includes(status), `unexpected status ${status}`);
+    }
   });
 
   await test('GET /api/users (admin)', async () => {

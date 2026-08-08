@@ -8,7 +8,9 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node src/seeders/seed.js",
-    "test:api": "node src/tests/run-api-tests.js"
+    "test:api": "node src/tests/run-api-tests.js",
+    "test:e2e": "node src/tests/e2e-demo-flow.js",
+    "test:security": "node src/tests/security-permissions.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

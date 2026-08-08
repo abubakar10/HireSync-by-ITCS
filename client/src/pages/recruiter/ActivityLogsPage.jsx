@@ -68,7 +68,7 @@ export default function ActivityLogsPage({ integrationOnly = false }) {
         }
       />
 
-      <div className="mb-4 grid gap-3 rounded-2xl border border-ink-200 bg-white p-4 md:grid-cols-5">
+      <div className="filter-bar md:grid-cols-5">
         <Input
           placeholder="Board"
           value={filters.board}
@@ -101,45 +101,49 @@ export default function ActivityLogsPage({ integrationOnly = false }) {
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <div className="panel overflow-hidden">
         {loading ? (
           <TableSkeleton />
         ) : logs.length === 0 ? (
-          <EmptyState icon={Activity} title="No logs match" description="Adjust filters or perform an action." />
+          <EmptyState
+            icon={Activity}
+            title="No logs match"
+            description="Adjust filters or perform an action in the workspace."
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-ink-100 bg-ink-50 text-xs uppercase text-ink-500">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Timestamp</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Board</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Response</th>
-                  <th className="px-4 py-3">Duration</th>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Board</th>
+                  <th>Status</th>
+                  <th>Response</th>
+                  <th>Duration</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log._id} className="border-b border-ink-50 align-top">
-                    <td className="whitespace-nowrap px-4 py-3 text-ink-500">
+                  <tr key={log._id} className="align-top">
+                    <td className="whitespace-nowrap text-ink-500">
                       {formatDateTime(log.createdAt)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <p className="font-semibold text-ink-900">{log.action}</p>
                       <p className="text-xs text-ink-500">
                         {log.entity}
                         {log.details?.jobTitle ? ` · ${log.details.jobTitle}` : ''}
                       </p>
                     </td>
-                    <td className="px-4 py-3">{log.board || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td>{log.board || '—'}</td>
+                    <td>
                       <Badge status={log.status}>{log.status}</Badge>
                     </td>
-                    <td className="max-w-xs px-4 py-3 text-xs text-ink-600">
+                    <td className="max-w-xs text-xs text-ink-600">
                       {log.response || JSON.stringify(log.details || {}).slice(0, 80)}
                     </td>
-                    <td className="px-4 py-3 text-ink-500">
+                    <td className="text-ink-500">
                       {log.durationMs != null ? `${log.durationMs} ms` : '—'}
                     </td>
                   </tr>

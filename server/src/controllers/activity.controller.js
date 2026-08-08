@@ -25,10 +25,12 @@ export const listActivity = asyncHandler(async (req, res) => {
   if (req.user.role === 'recruiter') {
     const jobs = await Job.find({ createdBy: req.user._id }).select('_id');
     const jobIds = jobs.map((j) => j._id);
+    const jobIdValues = [...jobIds, ...jobIds.map((id) => id.toString())];
     filter.$or = [
       { userId: req.user._id },
-      { entity: 'Job', entityId: { $in: jobIds } },
-      { 'details.jobId': { $in: jobIds.map((id) => id.toString()) } },
+      { entity: 'Job', entityId: { $in: jobIdValues } },
+      { entity: 'JobDistribution', entityId: { $exists: true }, 'details.jobId': { $in: jobIdValues } },
+      { 'details.jobId': { $in: jobIdValues } },
     ];
   }
 
@@ -73,6 +75,17 @@ export const listIntegrationLogs = asyncHandler(async (req, res) => {
     filter.createdAt = {};
     if (req.query.dateFrom) filter.createdAt.$gte = new Date(req.query.dateFrom);
     if (req.query.dateTo) filter.createdAt.$lte = new Date(req.query.dateTo);
+  }
+
+  // Recruiters only see integration events for their own jobs
+  if (req.user.role === 'recruiter') {
+    const jobs = await Job.find({ createdBy: req.user._id }).select('_id');
+    const jobIds = jobs.map((j) => j._id);
+    const jobIdValues = [...jobIds, ...jobIds.map((id) => id.toString())];
+    filter.$or = [
+      { userId: req.user._id },
+      { 'details.jobId': { $in: jobIdValues } },
+    ];
   }
 
   const [logs, total] = await Promise.all([

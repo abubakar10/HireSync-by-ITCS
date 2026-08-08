@@ -5,11 +5,11 @@ export const registerRules = [
   body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }),
   body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters'),
   body('role')
     .optional()
-    .isIn(['admin', 'recruiter', 'candidate'])
+    .isIn(['recruiter', 'candidate'])
     .withMessage('Invalid role'),
   body('company').optional().trim().isLength({ max: 200 }),
 ];
@@ -22,7 +22,7 @@ export const loginRules = [
 export const createUserRules = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('role').isIn(['admin', 'recruiter', 'candidate']).withMessage('Invalid role'),
   body('company').optional().trim(),
 ];
@@ -34,7 +34,7 @@ export const updateUserRules = [
   body('role').optional().isIn(['admin', 'recruiter', 'candidate']),
   body('company').optional().trim(),
   body('isActive').optional().isBoolean(),
-  body('password').optional().isLength({ min: 6 }),
+  body('password').optional().isLength({ min: 8 }),
 ];
 
 export const createJobRules = [
@@ -81,14 +81,23 @@ export const jobQueryRules = [
 ];
 
 export const createCandidateRules = [
-  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 120 }),
   body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('phone').optional().trim(),
-  body('resumeUrl').optional().trim(),
-  body('coverLetter').optional().trim(),
+  body('phone').optional().trim().isLength({ max: 40 }),
+  body('resumeUrl').optional().trim().isLength({ max: 500 }),
+  body('coverLetter').optional().trim().isLength({ max: 10000 }),
   body('source').optional().isIn(CANDIDATE_SOURCES),
   body('jobId').isMongoId().withMessage('Valid jobId is required'),
   body('status').optional().isIn(CANDIDATE_STATUSES),
+];
+
+export const candidateQueryRules = [
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('status').optional().isIn(CANDIDATE_STATUSES),
+  query('source').optional().isIn(CANDIDATE_SOURCES),
+  query('jobId').optional().isMongoId(),
+  query('search').optional().trim().isLength({ max: 100 }),
 ];
 
 export const updateCandidateRules = [

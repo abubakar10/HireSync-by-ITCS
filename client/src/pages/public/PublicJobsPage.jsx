@@ -5,11 +5,11 @@ import { jobsApi } from '../../services/api';
 import { formatSalary, formatDate, getErrorMessage } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
 import Input, { Select } from '../../components/ui/Input';
 import EmptyState from '../../components/ui/EmptyState';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { PageHeader } from '../../components/PageHeader';
+import Button from '../../components/ui/Button';
 
 export default function PublicJobsPage() {
   const toast = useToast();
@@ -55,7 +55,7 @@ export default function PublicJobsPage() {
         description="Browse published positions. Apply directly — applications are tracked as Direct source."
       />
 
-      <div className="mb-6 grid gap-3 rounded-2xl border border-ink-200 bg-white p-4 sm:grid-cols-4">
+      <div className="filter-bar sm:grid-cols-4">
         <div className="sm:col-span-2">
           <Input
             placeholder="Search title or company"
@@ -82,20 +82,24 @@ export default function PublicJobsPage() {
       </div>
 
       {loading ? (
-        <TableSkeleton />
+        <div className="panel">
+          <TableSkeleton />
+        </div>
       ) : jobs.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="No published jobs match"
-          description="Try clearing filters or check back after recruiters publish new roles."
-        />
+        <div className="panel">
+          <EmptyState
+            icon={Search}
+            title="No published jobs match"
+            description="Try clearing filters or check back after recruiters publish new roles."
+          />
+        </div>
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => (
             <Link
               key={job._id}
               to={`/jobs/${job._id}`}
-              className="block rounded-2xl border border-ink-200 bg-white p-5 transition hover:border-brand-300 hover:shadow-md"
+              className="block rounded-2xl border border-ink-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(28,34,44,0.04)] transition hover:border-brand-300 hover:shadow-md"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -106,15 +110,15 @@ export default function PublicJobsPage() {
                       <MapPin className="h-3.5 w-3.5" />
                       {job.location}
                     </span>
-                    <Badge status={job.employmentType}>{job.employmentType}</Badge>
+                    <Badge>{job.employmentType}</Badge>
                     <span>{formatSalary(job.salaryMin, job.salaryMax, job.currency)}</span>
                   </div>
                 </div>
                 <div className="text-left sm:text-right">
                   <p className="text-xs text-ink-400">Posted {formatDate(job.publishedAt)}</p>
-                  <Button size="sm" className="mt-2 pointer-events-none">
+                  <span className="mt-2 inline-flex h-8 items-center rounded-lg bg-brand-600 px-3 text-xs font-semibold text-white">
                     View role
-                  </Button>
+                  </span>
                 </div>
               </div>
             </Link>

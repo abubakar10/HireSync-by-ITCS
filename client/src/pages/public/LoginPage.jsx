@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Briefcase } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getErrorMessage } from '../../utils/helpers';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
+import Alert from '../../components/ui/Alert';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -34,14 +36,19 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-md flex-col justify-center px-4 py-12">
-      <div className="mb-6 text-center">
-        <h1 className="font-display text-3xl font-bold text-ink-900">Log in</h1>
+      <div className="mb-8 text-center">
+        <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-900/20">
+          <Briefcase className="h-5 w-5" />
+        </span>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-900">
+          Log in to HireSync
+        </h1>
         <p className="mt-2 text-sm text-ink-500">
-          Use demo credentials or your HireSync account.
+          Use a demo account or your own HireSync credentials.
         </p>
       </div>
       <Card>
-        <CardBody>
+        <CardBody className="space-y-5">
           <form className="space-y-4" onSubmit={onSubmit}>
             <Input
               label="Email"
@@ -63,13 +70,12 @@ export default function LoginPage() {
               Continue
             </Button>
           </form>
-          <div className="mt-5 rounded-xl bg-ink-50 p-3 text-xs text-ink-600">
-            <p className="font-semibold text-ink-800">Demo accounts</p>
-            <p className="mt-1">Admin: admin@hiresync.demo</p>
+          <Alert tone="info" title="Demo accounts">
+            <p>Admin: admin@hiresync.demo</p>
             <p>Recruiter: rita@acmecorp.demo</p>
             <p>Password: Password123!</p>
-          </div>
-          <p className="mt-4 text-center text-sm text-ink-500">
+          </Alert>
+          <p className="text-center text-sm text-ink-500">
             No account?{' '}
             <Link to="/register" className="font-semibold text-brand-700 hover:underline">
               Register

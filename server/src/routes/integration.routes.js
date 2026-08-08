@@ -9,8 +9,14 @@ import {
   getSimulateOptions,
   adminDashboardStats,
 } from '../controllers/integration.controller.js';
-import { requireAuth, requireRole, optionalAuth } from '../middleware/auth.js';
+import {
+  requireAuth,
+  requireRole,
+  optionalAuth,
+  requireWebhookSecret,
+} from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { publicWriteRateLimiter } from '../controllers/auth.controller.js';
 import {
   inboundApplicationRules,
   updateIntegrationRules,
@@ -19,7 +25,6 @@ import {
 
 const router = Router();
 
-// Static paths BEFORE /:board and /:id params
 router.get(
   '/stats/admin',
   requireAuth,
@@ -41,9 +46,10 @@ router.post(
   simulateApplication
 );
 
-// Inbound webhook (DEMO) — boards post applications here; JWT optional
 router.post(
   '/:board/applications',
+  publicWriteRateLimiter,
+  requireWebhookSecret,
   optionalAuth,
   inboundApplicationRules,
   validate,

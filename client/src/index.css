@@ -15,28 +15,86 @@
   --color-brand-800: #164937;
   --color-brand-900: #133c2e;
 
-  --color-ink-50: #f6f7f9;
-  --color-ink-100: #eceef2;
-  --color-ink-200: #d5dae3;
-  --color-ink-300: #b0b9c9;
-  --color-ink-400: #8592a8;
-  --color-ink-500: #66758f;
-  --color-ink-600: #515e76;
-  --color-ink-700: #434d60;
-  --color-ink-800: #3a4251;
-  --color-ink-900: #1e2430;
+  --color-ink-50: #f7f8fa;
+  --color-ink-100: #eef0f4;
+  --color-ink-200: #d8dde6;
+  --color-ink-300: #b3bbc9;
+  --color-ink-400: #8792a6;
+  --color-ink-500: #687488;
+  --color-ink-600: #525c6e;
+  --color-ink-700: #434b5a;
+  --color-ink-800: #3a404c;
+  --color-ink-900: #1c222c;
 }
 
 @layer base {
   html {
     @apply antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply m-0 min-h-screen bg-ink-50 font-sans text-ink-800;
+    @apply m-0 min-h-screen bg-ink-50 font-sans text-sm text-ink-800;
   }
 
   #root {
     @apply min-h-screen w-full;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-ink-900;
+  }
+
+  ::selection {
+    @apply bg-brand-100 text-brand-900;
+  }
+
+  :focus-visible {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-ink-50;
+  }
+
+  .panel {
+    @apply rounded-2xl border border-ink-200/80 bg-white shadow-[0_1px_2px_rgba(28,34,44,0.04)];
+  }
+
+  .data-table {
+    @apply min-w-full text-left text-sm;
+  }
+
+  .data-table thead {
+    @apply border-b border-ink-100 bg-ink-50/90;
+  }
+
+  .data-table th {
+    @apply px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500;
+  }
+
+  .data-table td {
+    @apply px-4 py-3.5 align-middle text-ink-700;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-ink-50 transition-colors last:border-0 hover:bg-ink-50/70;
+  }
+
+  .filter-bar {
+    @apply mb-4 grid gap-3 rounded-2xl border border-ink-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,34,44,0.04)];
+  }
+
+  .demo-banner {
+    @apply mb-4 flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950;
+  }
+
+  .page-stack {
+    @apply mx-auto w-full max-w-7xl;
   }
 }

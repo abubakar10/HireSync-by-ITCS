@@ -5,6 +5,8 @@ import {
   Candidate,
   Integration,
   ActivityLog,
+  CANDIDATE_SOURCES,
+  CANDIDATE_STATUSES,
 } from '../models/index.js';
 import { hashPassword } from '../utils/helpers.js';
 import { BOARD_CATALOG } from '../constants/boards.js';
@@ -23,12 +25,8 @@ const lastNames = [
   'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson',
 ];
 
-const sources = [
-  'Indeed', 'LinkedIn', 'Monster', 'JobStreet', 'Kalibrr',
-  'OnlineJobs.ph', 'JobsDB', 'Direct',
-];
-
-const statuses = ['New', 'Screening', 'Shortlisted', 'Interview', 'Rejected', 'Hired'];
+const sources = CANDIDATE_SOURCES;
+const statuses = CANDIDATE_STATUSES;
 
 const jobTemplates = [
   {
@@ -263,8 +261,11 @@ export async function seedDatabase({ clear = true } = {}) {
       jobId: job._id,
       status,
       appliedAt: daysAgo(i % 28),
-      externalApplicationId:
-        source !== 'Direct' ? `${source.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-app-${i}` : null,
+      ...(source !== 'Direct'
+        ? {
+            externalApplicationId: `${source.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-app-${i}`,
+          }
+        : {}),
       timeline: [
         {
           action: 'Application received',

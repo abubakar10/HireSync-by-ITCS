@@ -75,3 +75,34 @@ export const optionalAuth = async (req, _res, next) => {
   }
   next();
 };
+
+/**
+ * Protect inbound job-board webhooks.
+ * When WEBHOOK_SECRET is set, require matching X-Webhook-Secret header.
+ * In production with DEMO_MODE=false, a secret is mandatory.
+ */
+export const requireWebhookSecret = (req, res, next) => {
+  const secret = config.webhookSecret;
+
+  if (!secret) {
+    if (config.nodeEnv === 'production' && !config.demoMode) {
+      return sendError(
+        res,
+        'Webhook endpoint is locked until WEBHOOK_SECRET is configured',
+        503
+      );
+    }
+    return next();
+  }
+
+  const provided =
+    req.headers['x-webhook-secret'] ||
+    req.headers['x-hiresync-webhook-secret'] ||
+    '';
+
+  if (!provided || provided !== secret) {
+    return sendError(res, 'Invalid or missing webhook secret', 401);
+  }
+
+  return next();
+};

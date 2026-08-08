@@ -4,6 +4,8 @@ import {
   logActivity,
   asyncHandler,
   parsePagination,
+  escapeRegex,
+  asPlainString,
 } from '../utils/helpers.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
@@ -14,12 +16,15 @@ export const listUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query);
   const filter = {};
 
-  if (req.query.role) filter.role = req.query.role;
-  if (req.query.search) {
+  const role = asPlainString(req.query.role);
+  const search = asPlainString(req.query.search);
+  if (role) filter.role = role;
+  if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { name: { $regex: req.query.search, $options: 'i' } },
-      { email: { $regex: req.query.search, $options: 'i' } },
-      { company: { $regex: req.query.search, $options: 'i' } },
+      { name: { $regex: safe, $options: 'i' } },
+      { email: { $regex: safe, $options: 'i' } },
+      { company: { $regex: safe, $options: 'i' } },
     ];
   }
 

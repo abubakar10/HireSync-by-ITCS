@@ -68,6 +68,7 @@ export const jobsApi = {
 
 export const candidatesApi = {
   list: (params) => api.get('/candidates', { params }),
+  sources: () => api.get('/candidates/sources'),
   pipeline: (params) => api.get('/candidates/pipeline', { params }),
   get: (id) => api.get(`/candidates/${id}`),
   create: (payload) => api.post('/candidates', payload),

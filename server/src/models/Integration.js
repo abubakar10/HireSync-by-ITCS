@@ -51,11 +51,11 @@ const integrationSchema = new mongoose.Schema(
         // Never expose raw credentials from configuration
         if (ret.configuration && typeof ret.configuration === 'object') {
           const safe = { ...ret.configuration };
-          if (safe.apiKey) safe.apiKey = '***';
-          if (safe.apiSecret) safe.apiSecret = '***';
-          if (safe.clientSecret) safe.clientSecret = '***';
-          if (safe.password) safe.password = '***';
-          if (safe.token) safe.token = '***';
+          for (const key of Object.keys(safe)) {
+            if (/(secret|password|token|apikey|private|credential)/i.test(key)) {
+              safe[key] = '***';
+            }
+          }
           ret.configuration = safe;
         }
         delete ret.__v;

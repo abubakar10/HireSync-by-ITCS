@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Shuffle, Sparkles } from 'lucide-react';
+import { Shuffle, Sparkles } from 'lucide-react';
 import { integrationsApi } from '../services/api';
 import { getErrorMessage } from '../utils/helpers';
 import { useToast } from '../context/ToastContext';
 import Button from './ui/Button';
 import Input, { Select, Textarea } from './ui/Input';
 import Modal from './ui/Modal';
-import Badge from './ui/Badge';
+import { DemoBadge } from './ui/Badge';
+import SourceBadge from './ui/SourceBadge';
+import Alert from './ui/Alert';
+import { Skeleton } from './ui/Skeleton';
 
 /**
  * Shared DEMO simulator — posts through the inbound webhook pipeline
@@ -107,7 +110,6 @@ export default function SimulateApplicationModal({
         phone: form.phone,
         resumeUrl: form.resumeUrl,
         coverLetter: form.coverLetter,
-        useRandomApplicant: !form.name,
       });
       setResult(data.data);
       toast.success(data.message || 'Application synced (DEMO)');
@@ -152,34 +154,34 @@ export default function SimulateApplicationModal({
         )
       }
     >
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-        <strong>DEMO only.</strong> This posts to the same webhook handler boards would call
-        (<code className="mx-1 rounded bg-white px-1">POST /api/integrations/:board/applications</code>).
-        No real Indeed / LinkedIn / JobStreet credentials are used.
-      </div>
+      <Alert tone="warning" className="mb-4">
+        <strong>DEMO only.</strong> Posts to the same webhook handler boards would call (
+        <code className="mx-1 rounded bg-white/80 px-1 text-xs">
+          POST /api/integrations/:board/applications
+        </code>
+        ). No real board credentials are used.
+      </Alert>
 
       {result ? (
         <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 text-brand-700" />
-            <div>
-              <p className="font-semibold text-brand-900">{result.message}</p>
-              <p className="mt-1 text-sm text-brand-800">
-                Candidate is in the <strong>{result.pipelineColumn}</strong> column with source{' '}
-                <Badge className="ml-1">{result.candidate?.source}</Badge>
-              </p>
-            </div>
-          </div>
+          <Alert tone="success" title={result.message}>
+            Candidate is in the <strong>{result.pipelineColumn}</strong> column with source{' '}
+            <SourceBadge source={result.candidate?.source} className="ml-1" />
+          </Alert>
 
-          <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div className="rounded-xl bg-ink-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Applicant</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">
+                Applicant
+              </p>
               <p className="mt-1 font-semibold text-ink-900">{result.candidate?.name}</p>
               <p className="text-ink-600">{result.candidate?.email}</p>
               <p className="text-ink-500">{result.candidate?.phone}</p>
             </div>
             <div className="rounded-xl bg-ink-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Matched job</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">
+                Matched job
+              </p>
               <p className="mt-1 font-semibold text-ink-900">{result.job?.title}</p>
               <p className="text-ink-600">{result.job?.company}</p>
               <p className="mt-2 font-mono text-xs text-ink-500">
@@ -189,19 +191,21 @@ export default function SimulateApplicationModal({
           </div>
 
           <p className="text-xs text-ink-500">
-            Webhook path used: <code>{result.webhookPath}</code> · {result.durationMs} ms · mode: mock
+            Webhook path used: <code>{result.webhookPath}</code> · {result.durationMs} ms · mode:
+            mock
           </p>
         </div>
       ) : loadingOptions ? (
-        <p className="py-8 text-center text-sm text-ink-500">Loading published board jobs…</p>
-      ) : !options.options.length ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-900">
-          <p className="font-semibold">No published distributions yet</p>
-          <p className="mt-1">
-            Open a job → Distribute → publish to Indeed (or another board), then come back to simulate
-            an inbound application.
-          </p>
+        <div className="space-y-3 py-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
+      ) : !options.options.length ? (
+        <Alert tone="error" title="No published distributions yet">
+          Open a job → Distribute → publish to Indeed (or another board), then come back to
+          simulate an inbound application.
+        </Alert>
       ) : (
         <div className="space-y-4">
           <Select
@@ -224,11 +228,11 @@ export default function SimulateApplicationModal({
           </Select>
 
           {selectedOption && (
-            <div className="rounded-xl border border-ink-100 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ink-100 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+              <DemoBadge />
               Matching via <strong>externalJobId</strong>{' '}
               <code className="rounded bg-white px-1">{selectedOption.externalJobId}</code>
-              {' · '}
-              Source will be saved as <Badge>{selectedOption.board}</Badge>
+              · Source <SourceBadge source={selectedOption.board} />
             </div>
           )}
 
@@ -245,7 +249,7 @@ export default function SimulateApplicationModal({
                 key={preset.name}
                 type="button"
                 onClick={() => applyPreset(preset)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                   form.name === preset.name
                     ? 'border-brand-400 bg-brand-50 text-brand-800'
                     : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300'

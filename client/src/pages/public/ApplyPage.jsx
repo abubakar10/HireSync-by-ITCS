@@ -46,7 +46,6 @@ export default function ApplyPage() {
       await candidatesApi.create({
         ...form,
         jobId: id,
-        source: 'Direct',
       });
       toast.success('Application submitted');
       navigate(`/jobs/${id}`);
@@ -68,9 +67,12 @@ export default function ApplyPage() {
   if (!job) {
     return (
       <div className="mx-auto max-w-xl px-4 py-20 text-center">
-        <p>Job not found.</p>
-        <Link to="/jobs" className="text-brand-700">
-          Back
+        <h1 className="font-display text-2xl font-bold text-ink-900">Job not found</h1>
+        <p className="mt-2 text-sm text-ink-500">
+          This role may have been closed or the link is incorrect.
+        </p>
+        <Link to="/jobs" className="mt-4 inline-block font-semibold text-brand-700">
+          Back to open roles
         </Link>
       </div>
     );
@@ -78,9 +80,11 @@ export default function ApplyPage() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:px-6">
-      <h1 className="font-display text-2xl font-bold text-ink-900">Apply for {job.title}</h1>
-      <p className="mt-1 text-sm text-ink-500">
-        {job.company} · Source will be recorded as Direct
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+        Apply for {job.title}
+      </h1>
+      <p className="mt-1.5 text-sm text-ink-500">
+        {job.company} · Your application will be recorded with source Direct in HireSync
       </p>
 
       <Card className="mt-6">

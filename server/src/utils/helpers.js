@@ -5,12 +5,32 @@ import { ActivityLog } from '../models/index.js';
 
 const SALT_ROUNDS = 12;
 
+/** Real bcrypt hash so missing-user login still spends compare time */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('__hiresync_timing_dummy__', SALT_ROUNDS);
+
 export const hashPassword = async (password) => {
   return bcrypt.hash(password, SALT_ROUNDS);
 };
 
 export const comparePassword = async (password, hash) => {
-  return bcrypt.compare(password, hash);
+  return bcrypt.compare(password, hash || DUMMY_PASSWORD_HASH);
+};
+
+/**
+ * Escape user input before using in MongoDB $regex to reduce ReDoS risk.
+ */
+export const escapeRegex = (value, maxLen = 80) => {
+  if (value == null) return '';
+  return String(value)
+    .slice(0, maxLen)
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+/** Coerce query params to plain strings (blocks operator injection objects). */
+export const asPlainString = (value) => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return undefined;
 };
 
 export const signToken = (user) => {
