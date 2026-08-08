@@ -22,10 +22,18 @@ if (nodeEnv === 'production') {
   }
 }
 
+const normalizeOrigin = (value = '') => String(value).trim().replace(/\/+$/, '');
+
+const clientOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
 const config = {
   port: parseInt(process.env.PORT, 10) || 5000,
   nodeEnv,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: clientOrigins[0] || 'http://localhost:5173',
+  clientOrigins,
   mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/job-integration-system',
   jwtSecret: jwtSecret || 'dev_jwt_secret_change_in_production',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',

@@ -21,7 +21,13 @@ app.use(
 );
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin(origin, callback) {
+      // Allow non-browser tools (no Origin) and configured frontend origin(s)
+      if (!origin) return callback(null, true);
+      const allowed = config.clientOrigins || [config.clientUrl];
+      if (allowed.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );
